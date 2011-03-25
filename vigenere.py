@@ -38,6 +38,7 @@ POSSIBILITY OF SUCH DAMAGE.
 """
 
 import string
+import utility_funcs
 
 
 def vigenere(text,key,mode=1):
@@ -181,11 +182,15 @@ def print_kasiski_conclusions(data, verbose = False):
         for (key_len, freq) in sorted_data:
             print "{0}: {1}%".format(key_len, freq)
         print "Conclusions:"
-    i = 0
-    if sorted_data[0][0] == 1:
-       i = 1
-    print "{0}: {1}%".format(sorted_data[i][0], sorted_data[i][-1])
-    print "{0}: {1}%".format(sorted_data[i+1][0], sorted_data[i+1][-1])
+    
+    if sorted_data:
+        i = 0
+        if sorted_data[0][0] == 1:
+            i = 1
+        if i < len(sorted_data):
+            print "{0}: {1}%".format(sorted_data[i][0], sorted_data[i][-1])
+        if i + 1 < len(sorted_data):
+            print "{0}: {1}%".format(sorted_data[i+1][0], sorted_data[i+1][-1])
 
 
 ###
@@ -205,14 +210,12 @@ def delta_index_of_coincidence(columns):
     num_of_chars_in_alphabet = 26
     acumulator = 0.0
     for column in columns:
-        column = map(lambda x: ord(x) - 64, column) # 'A' = 1, 'B' = 2, ....
-        list_n = [column.count(c) for c in xrange(1, num_of_chars_in_alphabet + 1)]
-        summatory = reduce(lambda s, x: s + x * (x - 1), list_n, 0)
-        N = len(column)
-        acumulator += float(summatory) / (float(N * (N - 1)) / num_of_chars_in_alphabet)
+        column = ''.join(column)
+        acumulator += utility_funcs.delta_index_of_coincidence(column,
+            utility_funcs.freqs(column, relative = False))
     
     return acumulator / len(columns)
-
+    
 
 def friedman_test(encr_text, min_len=3, max_len=50):
     """
@@ -286,16 +289,8 @@ def print_friedman_conclusions(data, lang, lang_ic, verbose = False):
 ###
 # MAIN
 ###
-_lang = {
-    #'lang': (index_of_coincidence, num_of_chars_in_alphabet)
-    'English': (1.73, 26),
-    'French': (2.02, 26),
-    'German': (2.05, 30),
-    'Italian': (1.94, 26),
-    'Portuguese': (1.94, 26),
-    'Russian': (1.76, 33), # Cyrillic alphabet
-    'Spanish': (1.94, 27)
-}
+
+from langs import LangNotFoundError, LangsDB
 
 if __name__=='__main__':
     import sys
@@ -311,10 +306,14 @@ if __name__=='__main__':
             text += line.strip()
         if sys.argv[1] == 'ANALYZE':
             print_kasiski_conclusions(kasiski_test(text))
+            with open("langs.json", "r") as fp:
+                langs = LangsDB(fp)
             try:
-                print_friedman_conclusions(friedman_test(text), sys.argv[2], _lang[sys.argv[2]][0])
-            except KeyError:
-                print "Unknown language. Known languages are:", ', '.join(_lang.keys())
+                print_friedman_conclusions(friedman_test(text), sys.argv[2],
+                    langs.kappa_index_of_coincidence(sys.argv[2]), verbose = True)
+            except LangNotFoundError:
+                print "Unknown language '{0}'. Known languages are: {1}".format(
+                    sys.argv[2], ', '.join(langs.langs))
         else:
             mode = 1
             if sys.argv[1] == 'DECRYPT':
