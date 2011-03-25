@@ -56,6 +56,7 @@ def freqs(text, relative = True, case_sensitive = False):
         text = text.decode('utf-8')
     
     n = dict()
+    N = 0
     for char in text:
         if char.isalpha():
             if not case_sensitive:
@@ -64,11 +65,13 @@ def freqs(text, relative = True, case_sensitive = False):
                 n[char] += 1
             except KeyError:
                 n[char] = 1
+            finally:
+                N += 1
     
     if relative:
         f = dict()
         for k, a in n.iteritems():
-            f[k] = float(a)/len(text)
+            f[k] = float(a)/N
         return f
     
     return n
